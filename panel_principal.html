@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor de Configuración Definitivo</title>
+    <style>
+        :root {
+            --bg-color: #f4f7f9; --surface-color: #ffffff; --text-color: #212529;
+            --primary-color: #007bff; --border-color: #dee2e6;
+        }
+        body.dark-mode {
+            --bg-color: #121212; --surface-color: #1e1e1e; --text-color: #e0e0e0;
+            --primary-color: #3b9dff; --border-color: #444;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background-color: var(--bg-color); color: var(--text-color); height: 100vh; overflow: hidden; transition: background-color 0.3s, color 0.3s; }
+        .app-layout { display: flex; height: 100%; }
+        .sidebar { width: 300px; flex-shrink: 0; background-color: var(--surface-color); border-right: 1px solid var(--border-color); padding: 20px; box-sizing: border-box; overflow-y: auto; transition: background-color 0.3s, border-color 0.3s; display: flex; flex-direction: column; }
+        .sidebar-header { border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 15px; }
+        .sidebar-header h2 { font-size: 1.5em; margin: 0; }
+        .nav-menu { list-style: none; padding: 0; margin: 0; flex-grow: 1; }
+        .nav-segment { margin-bottom: 20px; }
+        .segment-title { font-size: 0.9em; font-weight: bold; color: #888; text-transform: uppercase; padding: 10px 15px; cursor: pointer; border-radius: 8px; transition: background-color 0.2s; }
+        .segment-title:hover { background-color: rgba(128,128,128,0.1); }
+        .segment-content { max-height: 0; overflow: hidden; transition: max-height 0.4s ease-out; }
+        .segment-content.open { max-height: 1000px; /* Un valor alto para permitir la expansión */ }
+        .nav-item { padding: 15px 15px 15px 30px; font-size: 1.1em; font-weight: 600; border-radius: 8px; cursor: pointer; transition: background-color 0.2s, color 0.2s; margin-bottom: 5px; display: flex; align-items: center; gap: 10px; }
+        .nav-item:hover { background-color: rgba(128,128,128,0.1); }
+        .nav-item.active { background-color: var(--primary-color); color: white; }
+        .theme-switcher-container { margin-top: auto; padding-top: 15px; border-top: 1px solid var(--border-color); }
+        .theme-switcher { display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .theme-switcher span { margin: 0 8px; font-size: 1.2em; }
+        .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; border-radius: 26px; transition: 0.4s; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; border-radius: 50%; transition: 0.4s; }
+        input:checked + .slider { background-color: var(--primary-color); }
+        input:checked + .slider:before { transform: translateX(24px); }
+        .main-content { flex-grow: 1; padding: 40px; overflow-y: auto; }
+        #contentTitle { margin-top: 0; padding-bottom: 15px; border-bottom: 1px solid var(--border-color); }
+        .fieldset { border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; margin-top: 20px; background-color: var(--fieldset-bg); }
+        .fieldset legend { font-weight: bold; padding: 0 10px; color: var(--primary-color); }
+        .form-group { padding: 15px 0; border-top: 1px solid #f1f1f1; }
+        .form-group:first-child { border-top: none; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; }
+        .checkbox-label { display: flex; align-items: center; font-weight: normal; width: 100%; cursor: pointer; }
+        input[type="text"], input[type="number"] { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; box-sizing: border-box; background-color: var(--surface-color); color: var(--text-color); }
+        input[type="checkbox"] { height: 1.3em; width: 1.3em; margin-right: 10px; flex-shrink: 0; }
+        .checklist-grid, .array-inputs { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; }
+        .array-item { display: flex; flex-direction: column; }
+        .action-buttons { text-align: center; margin-top: 40px; }
+        .action-buttons button { background-color: #28a745; color: white; padding: 14px 35px; border: none; border-radius: 8px; cursor: pointer; font-size: 1.2em; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="app-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>Categorías</h2>
+            </div>
+            <ul id="navMenu" class="nav-menu"></ul>
+            <div class="theme-switcher-container">
+                <div class="theme-switcher">
+                    <span>☀️</span>
+                    <label class="switch"><input type="checkbox" id="themeToggle"><span class="slider"></span></label>
+                    <span>🌙</span>
+                </div>
+            </div>
+        </aside>
+        <main class="main-content">
+            <h1 id="contentTitle"></h1>
+            <form id="configForm"></form>
+            <div class="action-buttons">
+                <button type="button" id="exportBtn">Exportar Configuración Completa</button>
+            </div>
+        </main>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- 1. DATOS JSON COMPLETOS (INCLUYENDO TODAS LAS SECCIONES) ---
+        const fullConfigData = {
+          "connectionSettings": { "savedProxy": "", "isTaiwan": false, "resetConnection": true, "reconnectTime": 5, "otherLoginTime": 30, "workerSpeed": 1000, "cmdInterval": 2000, "resetTime": 60, "resetTimeBegin": 50, "saveLogToFile": false, "dontClearLog": false, "refreshKey": true, "logResetTime": 2, "postToWebhook": false, "postKeyExpiry": false, "postStatusChange": false, "postScheduleChange": false, "postOtherLogin": false, "postRSSLimit": false },
+          "miscSettings": { "troveTime": 2, "useVipPoints": true, "useExpItems": true, "autoOpenChests": false, "autoAttackSkirmish": true, "autoAttackFireTrial": false, "recallTroopsForSkirmish": false, "autoClaimKingdomGifts": false, "skirmishTroopPercent": 90.00, "useResourceFromBag": true, "autoTreasureTrove": true, "useStarScrolls": false, "skirmishChapter": 0, "assignedWebhook": 0, "giftResetTime": "1.00:00:00", "dayGiftResetTime": "00:00:00", "giftResetType": 0, "giftResetDay": 1, "saveGuildStats": false, "saveFestStats": false, "saveGuildList": false, "hourReset": 0, "giftExpMode": 1, "giftUpload": false, "scheduleBuildSpam": false, "scheduleBuildSpamHours": 6, "scheduleBuildSpamAmount": 20, "scheduleBuildSpamDelay": 7 },
+          "statSettings": { "pointGoalHunt": [0,1,3,9,18], "pointGoalPurchase": [1,2,4,8,16], "finalPointGoalHunt": 50, "finalPointGoalPurchase": 50 },
+          "mailSettings": { "autoMarkRead": false, "autoDeleteGameMail": false, "autoDeleteGuildMail": false, "autoDeleteSystemMail": false, "autoDeleteCombatMail": false },
+          "guildSettings": { "sendGuildHelp": true, "requestGuildHelp": true, "autoGuildGifts": true, "autoFortunePackets": true, "joinShowdown": false, "autoSlowHelpSpeed": true, "guildCheckDelay": 30, "helpCheckDelay": 30 },
+          "questSettings": { "dailyLoginGift": true, "autoVIPQuest": true, "autoTurfQuest": false, "autoChapterQuest": true, "autoAdminQuest": true, "autoGuildQuest": true, "adventureLog": false, "autoMysteryBox": true, "collectDailyQuests": true, "sendEmoji": false, "attackLabQuest": false, "attackTycoonQuest": false, "shelterQuest": false, "openAllGuildQuest": false, "openAllAdminQuest": false, "questReserve": 150 },
+          "speedUpSettings": { "useSpeedUps": false, "waitForHelp": true, "waitHelpValue": 30, "ignoreHomeKingdomRule": false, "generalForBuildOnly": true, "autoBuildingSpeedUp": true, "autoResearchSpeedUp": true, "autoTrainingSpeedUp": true, "autoHealingSpeedUp": false, "autoMergingSpeedUp": false, "autoTrapSpeedUp": false, "autoTrapRepairSpeedUp": false, "autoLunarGearSpeedUp": false, "autoGearSpeedUp": false, "autoWallSpeedUp": false, "boostingMode": false, "maxSpeedUpExcess": "00:05:00" },
+          "turfQuests": { "attackLabyrinth": true, "attackKingdomTycoon": true, "useHolyStars": false, "useLuckTokens": false, "labOnlyFree": true, "ktOnlyFree": true, "labyrinthMode": 1 },
+          "otherTurfEvents": { "attackLabyrinthOther": true, "collectLabWeeklyChallenge": true, "attackKTOther": true, "collectKTWeeklyChallenge": true, "KTMode": 1, "LabOnlyFree": true, "KTOnlyFree": true, "LabModeOther": 1, "PlayLottery": true, "LotteryOnlyFree": true, "PlayFC": true, "CollectFCRewards": true, "PlayRace": true, "PlayPinball": true, "CollectPinballRewards": true, "CollectRaceRewards": true },
+          "kingdomBoosts": { "useFoodBoost": false, "useStoneBoost": false, "useWoodBoost": false, "useOreBoost": false, "useGoldBoost": false, "useGatherBoost": false, "useReducedUpkeep": false },
+          "cargoShipSettings": { "allowTrading": false, "tradeFood": true, "tradeStone": true, "tradeWood": true, "tradeOre": true, "tradeGold": true, "ignoreFood": false, "ignoreStone": false, "ignoreWood": false, "ignoreOre": false, "ignoreGold": false, "ignoreAnima": false, "ignoreLunite": false, "ignoreSpeedUp": false, "exchangeRssItemOnly": false, "useRssFromBagIfNeeded": true, "exchangeMinQuality": 1 },
+          "rallySettings": { "joinRallies": false, "craftEssences": true, "dontFillRally": true, "noSiege": true, "noT5": false, "oneType": false, "addBuffers": false, "minEssenceLevel": 0, "extraSpace": 50, "rallyLimit": 1, "maxWalkTime": 5, "rejoinWaitTime": 10, "rallyTroopType": 3, "maxRallyTime": 2, "keepEssSlotFree": false, "checkLab": true, "levelToAttack": [true,true,true,true,true,false,false,false,false,false] },
+          "protectionSettings": { "alwaysOpenShield": false, "openShieldWhenUnderAttack": true, "openShieldWhenScouted": true, "openShieldWhenRallied": true, "biggerSheildsFirst": false, "alwaysAntiScout": false, "useLongerAnti": false, "antiScoutWhenScout": false, "recallGatherTroopsWhenUnderAttack": true, "recallGatherTroopsWhenScouted": false, "recallGatherTroopsOnConflict": true, "sendTroopsToRegather": false, "dontShelterSiege": false, "regatherWaitTime": 30, "shieldRandomTime": 5, "ShelterType": 1, "AttackShelterType": 0, "shieldRedeployTime": 5, "antiRedeployTime": 5, "recallShelterTroopsAfterAttack": false, "preferredShield": -1 },
+          "supplySettings": { "sendResources": false, "useBagResource": false, "randomizeSpeed": false, "speedGear": false, "supplySpeed": 3.0, "maxTravelTime": 600, "playerToSend": "", "reservedRss": [1000000,1000000,1000000,1000000,1000000], "supplyMin": [3000000,3000000,3000000,3000000,3000000], "reservedBagRss": [0,0,0,0,0], "typesToSend": [false,false,false,false,false], "bagTypesToSend": [false,false,false,false,false] },
+          "gatherSettings": { "gatherResources": false, "gatherLowestResources": false, "ignoreLevelForGems": true, "clearTiles": false, "targetHigherLevel": true, "leaveSpareArmy": false, "spareArmyAmount": 1, "recallCamps": true, "useGatherGear": true, "useGatherSchedule": false, "ignoreLevel3GF": false, "gatherStartTime": "12:00:00", "gatherEndTime": "20:00:00", "maxArmysToSend": 2, "maxSearchArea": 2, "maxWalkTime": 10, "tileMinimum": 10000, "sendingDelay": 2, "levelToGather": [true,true,true,true,true,false], "typesToGather": [true,true,true,true,true,false]},
+          "realmGatherSettings": { "autoGathering": false, "leaveSpareArmy": false, "spareArmyAmount": 1, "maxArmysToSend": 2, "highTier": false, "typesToGather": [true,true,true,true,true,true] },
+          "monsterSettings": { "autoHunting": false, "sendMonstersToChat": false, "useBoots": false, "useEnergyItems": false, "oneKillHunt": false, "comboPrediction": false, "allowSaberfang": false, "huntSearchArea": 1, "huntSendDelay": 1000, "maxWalkTime": 60, "avoidConflict": false, "avoidGuildConflict": false, "energyPercentage": 90.00, "huntMode": 0, "stealPercentage": 50.0, "stealCombo": 2, "heroType": 0, "huntLevels": [true,true,false,false,false], "monsterTypes": [true,true,true], "selectedHerosMP": [0,0,0,0,0], "selectedHerosM": [0,0,0,0,0], "monstersToHunt_": { "0": true, "1": true, "2": true, "3": true, "4": true, "5": true, "6": true, "7": true, "8": true, "9": true, "10": true, "11": true, "12": true, "13": true, "14": true, "15": true, "16": true, "17": true, "18": true, "19": true, "20": true, "21": true, "22": true, "23": true, "24": true, "25": true, "26": true, "27": true, "28": true, "29": true, "30": true, "31": true, "32": true, "33": true, "34": true, "35": true, "36": true, "37": true, "38": true, "39": true, "40": true, "42": true, "45": true, "46": true, "47": true, "48": true, "49": true, "50": true, "51": true, "52": true, "53": true, "54": true, "55": true, "56": true, "57": true, "58": true, "59": true, "60": true, "61": true, "62": true, "63": true, "64": true, "65": true, "66": true, "67": true, "68": true, "69": true, "70": true, "71": true, "72": true } },
+          "realmMonsterSettings": { "autoHunting": false, "useEnergyItems": false, "autoHuntCount": 1, "lastAutoTime": 0 },
+          "spendingSettings": { "spendGems": false, "spendGC": false, "gemSettings": { "buyShield": false, "shieldToBuy": 0, "buyWithdrawSquad": false, "buyWarTome": false, "buyCrystalPickAxe": false, "buyGoldHammer": true, "buyArchaicTome": false, "buySoulCrystal": false, "buySteelCuffs": false, "buyReducedUpKeep": false, "buyVIP_Points": 0 }, "gcSettings": { "buyShield": true, "buyWithdrawSquad": true, "buyFoodBoost": false, "buyStoneBoost": false, "buyWoodBoost": false, "buyOreBoost": false, "buyGoldBoost": false, "buyGatheringBoost": false, "coinReserve": 0, "buyVIP_Points": 0 } },
+          "researchSettings": { "autoResearch": false, "useTargetTable": false, "useTechnolabes": false, "minTechnoMight": 1000000, "researchPriority": null, "researchEnabled": null, "researchPriority_": [{"Key":1,"Enabled":true},{"Key":2,"Enabled":true},{"Key":3,"Enabled":true},{"Key":5,"Enabled":true},{"Key":7,"Enabled":true},{"Key":8,"Enabled":true},{"Key":9,"Enabled":true},{"Key":10,"Enabled":true},{"Key":11,"Enabled":true},{"Key":12,"Enabled":true},{"Key":13,"Enabled":true},{"Key":14,"Enabled":true},{"Key":15,"Enabled":true},{"Key":16,"Enabled":true},{"Key":17,"Enabled":true}], "techTarget": [] },
+          "buildSettingsNew": { "autoBuild": false, "autoUpgrade": false, "ignoreSpamTarget": true, "buildByLowestLevel": false, "autoBuySecondQueue": false, "secondQueueSpamOnly": false, "buildPriority": 0, "newSpamTarget": 1, "maxBuildLevel": 17, "BuildingTarget": [0,4,4,4,4,4,1,1,1,1,2,2,2,2,3,3,3,3,3,5,5,5,5,5,5,7,7,7,7,7,6,6,6,6,6,6,21,21,21,22,22,22,23,23] },
+          "talentSettings": { "autoTalents": false, "pointsLeft": 288, "TalentTarget": [5,2,2,2,15,10,10,0,20,5,5,5,20,20,20,0,0,50,0,5,5,50,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0] },
+          "heroData": null,
+          "heroSettings": { "autoHireHeros": false, "autoUpgradeHeros": false, "autoEnhanceHeros": false, "useLevelUpItems": false, "reviveDeadLeader": false, "useBraveheartItems": false, "heroPriority": [] },
+          "arenaSettings": { "attackArena": true, "collectGems": true, "buyExtraAttempts": false, "attackGuildmates": false, "attemptsToBuy": 1, "minWinChance": 60, "maxWinChance": 100, "arenaHeroType": 2, "arenaDefenderType": 0, "selectedHeros": [0,0,0,0,0] },
+          "manaSettings": { "RefineManaCore": true },
+          "familiarData": [],
+          "skillBlacklist": [],
+          "eventSettings": { "guildFest": { "collectRewards": false, "lastExportHash": 0, "gfMissionComplete": { "missionsToComplete_": {}, "completeMissions": false, "buyExtraMission": false, "itemToBuy": 1051, "mToMailPlayer": false, "mNonAutoOnly": false, "mMailPlayerName": "" }, "gfMissionRemove": { "removeMissions": false, "removeDuplicates": false, "removeDelay": 30, "missionsToRemove_": {} } }, "Exchange": { "Enable": false, "AutoItemSelect": true, "FilterMissions": false, "MissionFilter": {} } }
+        };
+
+        const panelConfig = {
+            "Segmento 1: Principal y Combate": [
+                { key: "protectionSettings", title: "Protección" }, { key: "connectionSettings", title: "Conexión" },
+                { key: "miscSettings", title: "General" }, { key: "statSettings", title: "Estadísticas" },
+                { key: "guildSettings", title: "Gremio" }, { key: "rallySettings", title: "Rallies" },
+                { key: "monsterSettings", title: "Cacería" }, { key: "realmMonsterSettings", title: "Cacería de Reino" }
+            ],
+            "Segmento 2: Recursos y Tareas": [
+                { key: "supplySettings", title: "Suministros" }, { key: "gatherSettings", title: "Recolección" },
+                { key: "realmGatherSettings", title: "Recolección de Reino" }, { key: "cargoShipSettings", title: "Barco de Carga" },
+                { key: "questSettings", title: "Misiones" }, { key: "turfQuests", title: "Misiones de Territorio" },
+                { key: "otherTurfEvents", title: "Eventos de Territorio" }, { key: "speedUpSettings", title: "Aceleradores" },
+                { key: "researchSettings", title: "Investigación" }, { key: "buildSettingsNew", title: "Construcción" },
+                { key: "manaSettings", title: "Maná" }, { key: "eventSettings", title: "Eventos" }
+            ],
+            "Segmento 3: Jugador y Héroes": [
+                { key: "talentSettings", title: "Talentos" },
+                { key: "heroSettings", title: "Héroes" },
+                { key: "arenaSettings", title: "Arena" }
+            ]
+        };
+        
+        const visibleKeysConfig = {
+            protectionSettings: [ "alwaysOpenShield", "openShieldWhenUnderAttack", "openShieldWhenScouted", "openShieldWhenRallied", "biggerSheildsFirst", "alwaysAntiScout", "useLongerAnti", "antiScoutWhenScout", "recallGatherTroopsWhenUnderAttack", "recallGatherTroopsWhenScouted", "recallGatherTroopsOnConflict", "sendTroopsToRegather", "dontShelterSiege", "regatherWaitTime", "shieldRandomTime", "ShelterType", "AttackShelterType", "shieldRedeployTime", "antiRedeployTime", "recallShelterTroopsAfterAttack" ],
+            connectionSettings: [ "resetConnection", "otherLoginTime", "refreshKey" ],
+            miscSettings: [ "autoOpenChests", "autoAttackSkirmish", "autoAttackFireTrial", "recallTroopsForSkirmish", "autoClaimKingdomGifts", "autoTreasureTrove", "useStarScrolls", "giftResetTime", "useVipPoints" ],
+            statSettings: ["pointGoalHunt", "pointGoalPurchase", "finalPointGoalHunt", "finalPointGoalPurchase" ],
+            mailSettings: [ "autoMarkRead", "autoDeleteGameMail", "autoDeleteGuildMail", "autoDeleteSystemMail", "autoDeleteCombatMail" ],
+            guildSettings: [ "sendGuildHelp", "requestGuildHelp", "autoGuildGifts", "autoFortunePackets", "autoSlowHelpSpeed", "guildCheckDelay", "helpCheckDelay" ],
+            questSettings: [ "sendEmoji", "autoMysteryBox", "collectDailyQuests", "autoVIPQuest", "autoChapterQuest", "autoAdminQuest", "autoGuildQuest" ],
+            speedUpSettings: [ "useSpeedUps", "autoLunarGearSpeedUp", "autoTrainingSpeedUp", "autoResearchSpeedUp", "autoHealingSpeedUp", "autoMergingSpeedUp", "autoTrapSpeedUp", "autoTrapRepairSpeedUp", "autoWallSpeedUp", "autoGearSpeedUp", "boostingMode", "maxSpeedUpExcess" ],
+            turfQuests: [ "attackLabyrinth", "attackKingdomTycoon", "useHolyStars", "useLuckTokens", "labOnlyFree", "ktOnlyFree", "labyrinthMode" ],
+            otherTurfEvents: [ "attackLabyrinthOther", "collectLabWeeklyChallenge", "attackKTOther", "collectKTWeeklyChallenge", "PlayLottery", "PlayRace", "PlayPinball", "CollectPinballRewards", "CollectRaceRewards" ],
+            kingdomBoosts: [ "useFoodBoost", "useStoneBoost", "useWoodBoost", "useOreBoost", "useGoldBoost", "useGatherBoost", "useReducedUpkeep" ],
+            cargoShipSettings: [ "allowTrading", "tradeFood", "tradeStone", "tradeWood", "tradeOre", "tradeGold", "ignoreFood", "ignoreStone", "ignoreWood", "ignoreOre", "ignoreGold", "ignoreAnima", "ignoreLunite", "ignoreSpeedUp", "exchangeRssItemOnly", "useRssFromBagIfNeeded", "exchangeMinQuality" ],
+            rallySettings: [ "joinRallies", "craftEssences", "dontFillRally", "noSiege", "noT5", "oneType", "addBuffers", "minEssenceLevel", "extraSpace", "rallyLimit", "maxWalkTime", "rejoinWaitTime", "rallyTroopType", "maxRallyTime", "keepEssSlotFree", "checkLab", "levelToAttack" ],
+            supplySettings: [ "sendResources", "useBagResource", "randomizeSpeed", "speedGear", "supplySpeed", "maxTravelTime", "playerToSend", "reservedRss", "supplyMin", "reservedBagRss", "typesToSend", "bagTypesToSend" ],
+            gatherSettings: [ "gatherResources", "gatherLowestResources", "ignoreLevelForGems", "clearTiles", "targetHigherLevel", "leaveSpareArmy", "spareArmyAmount", "recallCamps", "useGatherGear", "useGatherSchedule", "ignoreLevel3GF", "gatherStartTime", "gatherEndTime", "maxArmysToSend", "maxSearchArea", "maxWalkTime", "tileMinimum", "sendingDelay", "levelToGather", "typesToGather" ],
+            realmGatherSettings: [ "autoGathering", "leaveSpareArmy", "spareArmyAmount", "maxArmysToSend", "highTier", "typesToGather" ],
+            monsterSettings: [ "autoHunting", "sendMonstersToChat", "useBoots", "useEnergyItems", "oneKillHunt", "comboPrediction", "allowSaberfang", "huntSearchArea", "huntSendDelay", "maxWalkTime", "avoidConflict", "avoidGuildConflict", "energyPercentage", "huntMode", "stealPercentage", "stealCombo", "heroType", "huntLevels" ],
+            realmMonsterSettings: [ "autoHunting", "useEnergyItems", "autoHuntCount" ],
+            researchSettings: [ "autoResearch", "useTargetTable" ],
+            buildSettingsNew: [ "autoBuild", "autoUpgrade", "ignoreSpamTarget", "buildByLowestLevel", "autoBuySecondQueue", "secondQueueSpamOnly", "maxBuildLevel" ],
+            talentSettings: [ "autoTalents" ],
+            heroSettings: [ "autoHireHeros", "autoUpgradeHeros", "autoEnhanceHeros", "useLevelUpItems", "reviveDeadLeader", "useBraveheartItems" ],
+            arenaSettings: [ "attackArena", "collectGems", "buyExtraAttempts", "attackGuildmates", "attemptsToBuy", "minWinChance", "maxWinChance" ],
+            manaSettings: ["RefineManaCore"],
+            eventSettings: ["guildFest", "Exchange"]
+        };
+
+        const visibleKeysSubConfig = {
+            guildFest: ["collectRewards", "gfMissionComplete"],
+            gfMissionComplete: ["completeMissions", "buyExtraMission", "mToMailPlayer", "mMailPlayerName"],
+            Exchange: ["Enable", "AutoItemSelect", "FilterMissions"]
+        };
+
+        // --- LÓGICA DEL PANEL (sin cambios mayores, se adapta a los nuevos datos) ---
+        // El script completo se incluye a continuación para asegurar la funcionalidad
+        const resourceNames = ["Comida", "Madera", "Piedra", "Mineral", "Oro", "Gemas"];
+        const navMenu = document.getElementById('navMenu');
+        const configForm = document.getElementById('configForm');
+        const contentTitle = document.getElementById('contentTitle');
+
+        function setupNavigation() {
+            let firstItemSet = false;
+            navMenu.innerHTML = '';
+            for (const segmentTitle in panelConfig) {
+                const segmentDiv = document.createElement('div');
+                segmentDiv.className = 'nav-segment';
+                const titleDiv = document.createElement('div');
+                titleDiv.className = 'segment-title';
+                titleDiv.textContent = segmentTitle;
+                segmentDiv.appendChild(titleDiv);
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'segment-content';
+                
+                panelConfig[segmentTitle].forEach(item => {
+                    const listItem = document.createElement('div');
+                    listItem.className = 'nav-item';
+                    listItem.textContent = item.title;
+                    listItem.dataset.key = item.key;
+                    contentDiv.appendChild(listItem);
+
+                    if (!firstItemSet) {
+                        listItem.classList.add('active');
+                        renderCategoryForm(item.key);
+                        contentDiv.classList.add('open');
+                        firstItemSet = true;
+                    }
+
+                    listItem.addEventListener('click', () => {
+                        document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+                        listItem.classList.add('active');
+                        renderCategoryForm(item.key);
+                    });
+                });
+                
+                segmentDiv.appendChild(contentDiv);
+                navMenu.appendChild(segmentDiv);
+
+                titleDiv.addEventListener('click', () => {
+                    const allContent = document.querySelectorAll('.segment-content');
+                    const wasOpen = contentDiv.classList.contains('open');
+                    allContent.forEach(el => el.classList.remove('open'));
+                    if (!wasOpen) {
+                        contentDiv.classList.add('open');
+                    }
+                });
+            }
+        }
+
+        function renderCategoryForm(categoryKey) {
+            configForm.innerHTML = '';
+            const visibleKeys = visibleKeysConfig[categoryKey] || [];
+            const categoryData = fullConfigData[categoryKey];
+            const categoryTitle = Object.values(panelConfig).flat().find(item => item.key === categoryKey)?.title || "Editor";
+            contentTitle.textContent = categoryTitle;
+
+            visibleKeys.forEach(key => {
+                const path = `${categoryKey}.${key}`;
+                const value = categoryData[key];
+                const labelText = formatKey(key);
+                const group = document.createElement('div');
+                group.className = 'form-group';
+                
+                if (typeof value === 'object' && !Array.isArray(value) && value !== null) {
+                    const fieldset = document.createElement('fieldset');
+                    const legend = document.createElement('legend');
+                    legend.textContent = formatKey(key);
+                    fieldset.appendChild(legend);
+                    renderInnerFormElements(value, fieldset, path, key);
+                    group.appendChild(fieldset);
+                } else {
+                    const label = document.createElement('label');
+                    label.setAttribute('for', path);
+                    const input = createInputField(value, path);
+                    let finalLabelText = labelText;
+                    if (key === 'mMailPlayerName') { input.maxLength = 20; }
+                    
+                    if (input.type === 'checkbox') {
+                        label.className = 'checkbox-label';
+                        label.textContent = finalLabelText;
+                        label.prepend(input);
+                        group.appendChild(label);
+                    } else {
+                        label.textContent = finalLabelText;
+                        group.appendChild(label);
+                        group.appendChild(input);
+                    }
+                }
+                configForm.appendChild(group);
+            });
+        }
+        
+        function renderInnerFormElements(data, container, parentPath, parentKey) {
+            const visibleSubKeys = visibleKeysSubConfig[parentKey] || [];
+            visibleSubKeys.forEach(key => {
+                if (data.hasOwnProperty(key)) {
+                    const path = `${parentPath}.${key}`;
+                    const value = data[key];
+                    const labelText = formatKey(key);
+                    const group = document.createElement('div');
+                    group.className = 'form-group';
+                    const input = createInputField(value, path);
+                    if(key === 'mMailPlayerName') { input.maxLength = 20; }
+                    const label = document.createElement('label');
+                    label.setAttribute('for', path);
+                    if (input.type === 'checkbox') {
+                        label.className = 'checkbox-label';
+                        label.textContent = labelText;
+                        label.prepend(input);
+                        group.appendChild(label);
+                    } else {
+                        label.textContent = labelText;
+                        group.appendChild(label);
+                        group.appendChild(input);
+                    }
+                    container.appendChild(group);
+                }
+            });
+        }
+
+        function createInputField(value, path) { const input = document.createElement('input'); input.id = path; input.dataset.path = path; if (typeof value === 'boolean') { input.type = 'checkbox'; input.checked = value; } else if (typeof value === 'number') { input.type = 'number'; input.value = value; input.step = "any"; } else { input.type = 'text'; input.value = String(value); } return input; }
+        function formatKey(key) { return key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1'); }
+        function setupThemeSwitcher() { const toggle = document.getElementById('themeToggle'); const currentTheme = localStorage.getItem('theme'); if (currentTheme === 'dark') { document.body.classList.add('dark-mode'); toggle.checked = true; } toggle.addEventListener('change', () => { if (toggle.checked) { document.body.classList.add('dark-mode'); localStorage.setItem('theme', 'dark'); } else { document.body.classList.remove('dark-mode'); localStorage.setItem('theme', 'light'); } }); }
+        function exportJson() { const updatedData = JSON.parse(JSON.stringify(fullConfigData)); const inputs = configForm.querySelectorAll('[data-path]'); inputs.forEach(input => { const path = input.dataset.path; let value; if (input.type === 'checkbox') { value = input.checked; } else if (input.type === 'number') { value = Number(input.value) || 0; } else { value = input.value; } const keys = path.replace(/\[(\d+)\]/g, '.$1').split('.'); let current = updatedData; while (keys.length > 1) { current = current[keys.shift()]; } current[keys[0]] = value; }); const blob = new Blob([JSON.stringify(updatedData, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'config_modificada.json'; a.click(); URL.revokeObjectURL(url); }
+
+        setupNavigation();
+        setupThemeSwitcher();
+        document.getElementById('exportBtn').addEventListener('click', exportJson);
+    });
+    </script>
+</body>
+</html>

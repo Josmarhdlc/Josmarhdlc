@@ -1,0 +1,15 @@
+.app-layout {
+    display: flex; /* Esto hace que los hijos se coloquen en una fila */
+    height: 100%;
+}
+
+.sidebar {
+    width: 280px;
+    flex-shrink: 0;
+    /* ... otros estilos ... */
+}
+
+.main-content {
+    flex-grow: 1; /* Esto hace que el contenido principal ocupe el espacio restante */
+    /* ... otros estilos ... */
+}

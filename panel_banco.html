@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor de Configuración del Banco</title>
+    <style>
+        :root {
+            --bg-color: #f4f7f9; --surface-color: #ffffff; --text-color: #212529;
+            --primary-color: #007bff; --border-color: #dee2e6;
+        }
+        body.dark-mode {
+            --bg-color: #121212; --surface-color: #1e1e1e; --text-color: #e0e0e0;
+            --primary-color: #3b9dff; --border-color: #444;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background-color: var(--bg-color); color: var(--text-color); transition: background-color 0.3s, color 0.3s; padding: 20px; box-sizing: border-box; }
+        .main-container { width: 100%; max-width: 900px; margin: auto; background-color: var(--surface-color); border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.12); padding: 30px; transition: background-color 0.3s; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 25px; }
+        .header h1 { margin: 0; font-size: 1.8em; }
+        .theme-switcher { display: flex; align-items: center; cursor: pointer; }
+        .theme-switcher span { margin: 0 8px; font-size: 1.2em; }
+        .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; border-radius: 26px; transition: 0.4s; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; border-radius: 50%; transition: 0.4s; }
+        input:checked + .slider { background-color: var(--primary-color); }
+        input:checked + .slider:before { transform: translateX(24px); }
+        .form-group { padding: 15px 0; border-top: 1px solid #f1f1f1; }
+        .form-group:first-child { border-top: none; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; }
+        .checkbox-label { display: flex; align-items: center; font-weight: normal; width: 100%; cursor: pointer; }
+        input[type="text"], input[type="number"] { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; box-sizing: border-box; background-color: var(--surface-color); color: var(--text-color); }
+        input[type="checkbox"] { height: 1.3em; width: 1.3em; margin-right: 10px; flex-shrink: 0; }
+        .action-buttons { text-align: center; margin-top: 40px; }
+        .action-buttons button { background-color: #28a745; color: white; padding: 14px 35px; border: none; border-radius: 8px; cursor: pointer; font-size: 1.2em; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="header">
+            <h1>Editor de Configuración del Banco</h1>
+            <div class="theme-switcher">
+                <span>☀️</span>
+                <label class="switch">
+                    <input type="checkbox" id="themeToggle">
+                    <span class="slider"></span>
+                </label>
+                <span>🌙</span>
+            </div>
+        </div>
+        <form id="configForm"></form>
+        <div class="action-buttons">
+            <button type="button" id="exportBtn">Exportar Configuración del Banco</button>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- 1. DATOS JSON COMPLETOS PARA BANKSETTINGS ---
+        const fullConfigData = {
+          "enableBank": false, "clearOutgoingData": true, "clearOutgoingDataTime": 7, "lastClearCheckTime": 0, "ignoreBalance": false, "allowAdminBalance": false, "allowAdminSkipLimit": true, "useBagRss": false, "saveLogToFile": false, "mailCommandOnly": false, "autoDeleteCmdMail": false, "disableMailResponse": false, "disableErrorResponse": false, "cmdPrefix": "!", "adminRssLimit": [0, 0, 0, 0, 0], "maxSendLimit": 40000000, "maxSendDistance": 50.0, "BuildspamMinimum": 3, "allowExternalCommands": false,
+          "guildCommands": [{"listCmdIndex": 0, "bCommand": 2, "commadReference": "bal", "enableCommand": true, "minRank": 1},{"listCmdIndex": 0, "bCommand": 5, "commadReference": "setacc", "enableCommand": true, "minRank": 4},{"listCmdIndex": 0, "bCommand": 6, "commadReference": "editacc", "enableCommand": true, "minRank": 4},{"listCmdIndex": 0, "bCommand": 7, "commadReference": "send", "enableCommand": true, "minRank": 1},{"listCmdIndex": 0, "bCommand": 8, "commadReference": "setlimit", "enableCommand": true, "minRank": 4},{"listCmdIndex": 0, "bCommand": 9, "commadReference": "setdaily", "enableCommand": true, "minRank": 4},{"listCmdIndex": 0, "bCommand": 10, "commadReference": "setsendlimit", "enableCommand": true, "minRank": 4},{"listCmdIndex": 0, "bCommand": 11, "commadReference": "setreceive", "enableCommand": true, "minRank": 4},{"listCmdIndex": 0, "bCommand": 12, "commadReference": "setvip", "enableCommand": true, "minRank": 4},{"listCmdIndex": 0, "bCommand": 13, "commadReference": "setmaxsend", "enableCommand": true, "minRank": 4},{"listCmdIndex": 0, "bCommand": 14, "commadReference": "bankinfo", "enableCommand": true, "minRank": 1},{"listCmdIndex": 0, "bCommand": 15, "commadReference": "setbankstate", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 16, "commadReference": "cleardata", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 17, "commadReference": "setignore", "enableCommand": true, "minRank": 4},{"listCmdIndex": 0, "bCommand": 18, "commadReference": "clearlogs", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 19, "commadReference": "setcleartime", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 20, "commadReference": "setmaillimit", "enableCommand": true, "minRank": 4},{"listCmdIndex": 0, "bCommand": 21, "commadReference": "help", "enableCommand": true, "minRank": 1},{"listCmdIndex": 0, "bCommand": 22, "commadReference": "setrank", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 23, "commadReference": "addguild", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 24, "commadReference": "removeguild", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 25, "commadReference": "addblacklist", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 26, "commadReference": "removeblacklist", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 27, "commadReference": "addwhitelist", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 28, "commadReference": "removewhitelist", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 29, "commadReference": "setlogstate", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 30, "commadReference": "clearplayerdata", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 31, "commadReference": "setmsgmode", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 32, "commadReference": "setautodelete", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 33, "commadReference": "setbagrss", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 34, "commadReference": "setadminbypass", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 35, "commadReference": "setmaxdistance", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 36, "commadReference": "setminbuildspam", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 37, "commadReference": "setallowext", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 38, "commadReference": "setallowadminbal", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 39, "commadReference": "setadminexempt", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 40, "commadReference": "bankdeposit", "enableCommand": true, "minRank": 1},{"listCmdIndex": 0, "bCommand": 41, "commadReference": "bankwithdraw", "enableCommand": true, "minRank": 1},{"listCmdIndex": 0, "bCommand": 42, "commadReference": "banktransfers", "enableCommand": true, "minRank": 1},{"listCmdIndex": 0, "bCommand": 43, "commadReference": "sendto", "enableCommand": true, "minRank": 1},{"listCmdIndex": 0, "bCommand": 44, "commadReference": "sendtomany", "enableCommand": true, "minRank": 1},{"listCmdIndex": 0, "bCommand": 45, "commadReference": "setmailonly", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 46, "commadReference": "setplayerlimit", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 47, "commadReference": "setranklimit", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 48, "commadReference": "setguildlimit", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 49, "commadReference": "setmailexpire", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 50, "commadReference": "bankinfoall", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 51, "commadReference": "balall", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 52, "commadReference": "bankconfig", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 53, "commadReference": "setadminrsslimit", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 54, "commadReference": "bankadd", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 55, "commadReference": "bankremove", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 56, "commadReference": "bankset", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 57, "commadReference": "bankreset", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 58, "commadReference": "bankaddall", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 59, "commadReference": "bankremoveall", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 60, "commadReference": "banksetall", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 61, "commadReference": "bankresetall", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 62, "commadReference": "banksetdailyall", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 63, "commadReference": "banksetlimitall", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 64, "commadReference": "banksetmaxsendall", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 65, "commadReference": "banksetmailexpireall", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 66, "commadReference": "banksetplayerlimitall", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 67, "commadReference": "resetstats", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 68, "commadReference": "payransom", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 69, "commadReference": "clearboard", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 70, "commadReference": "ess", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 71, "commadReference": "joingvg", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 72, "commadReference": "leavegvg", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 73, "commadReference": "enterda", "enableCommand": true, "minRank": 6},{"listCmdIndex": 0, "bCommand": 74, "commadReference": "leaveda", "enableCommand": true, "minRank": 6}],
+          "playerCommands": [{"listCmdIndex": 0, "bCommand": 0, "commadReference": "bankdeposit", "enableCommand": true, "minRank": 0},{"listCmdIndex": 0, "bCommand": 1, "commadReference": "bankwithdraw", "enableCommand": true, "minRank": 0},{"listCmdIndex": 0, "bCommand": 0, "commadReference": "sendto", "enableCommand": true, "minRank": 0}]
+        };
+
+        // --- 2. LISTA BLANCA: Define qué campos son visibles ---
+        const visibleKeys = [
+            "enableBank", "ignoreBalance", "allowAdminBalance", "allowAdminSkipLimit",
+            "useBagRss", "saveLogToFile", "mailCommandOnly", "autoDeleteCmdMail",
+            "disableMailResponse", "disableErrorResponse", "cmdPrefix", "maxSendLimit",
+            "maxSendDistance", "BuildspamMinimum"
+        ];
+        
+        const configForm = document.getElementById('configForm');
+
+        function renderForm() {
+            configForm.innerHTML = ''; // Limpiar
+            visibleKeys.forEach(key => {
+                if (fullConfigData.hasOwnProperty(key)) {
+                    const value = fullConfigData[key];
+                    const labelText = formatKey(key);
+                    const group = document.createElement('div');
+                    group.className = 'form-group';
+                    const label = document.createElement('label');
+                    label.setAttribute('for', key);
+                    const input = createInputField(value, key);
+                    
+                    if (input.type === 'checkbox') {
+                        label.className = 'checkbox-label';
+                        label.textContent = labelText;
+                        label.prepend(input);
+                        group.appendChild(label);
+                    } else {
+                        label.textContent = labelText;
+                        group.appendChild(label);
+                        group.appendChild(input);
+                    }
+                    configForm.appendChild(group);
+                }
+            });
+        }
+
+        function createInputField(value, path) {
+            const input = document.createElement('input');
+            input.id = path;
+            input.dataset.path = path;
+            if (typeof value === 'boolean') { input.type = 'checkbox'; input.checked = value; }
+            else if (typeof value === 'number') { input.type = 'number'; input.value = value; input.step = 'any'; }
+            else { input.type = 'text'; input.value = String(value); }
+            return input;
+        }
+
+        function formatKey(key) {
+             return key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1');
+        }
+
+        function setupThemeSwitcher() {
+            const toggle = document.getElementById('themeToggle');
+            const currentTheme = localStorage.getItem('theme');
+            if (currentTheme === 'dark') { document.body.classList.add('dark-mode'); toggle.checked = true; }
+            toggle.addEventListener('change', () => { if (toggle.checked) { document.body.classList.add('dark-mode'); localStorage.setItem('theme', 'dark'); } else { document.body.classList.remove('dark-mode'); localStorage.setItem('theme', 'light'); } });
+        }
+        
+        function exportJson() {
+            const updatedData = JSON.parse(JSON.stringify(fullConfigData));
+            const inputs = configForm.querySelectorAll('[data-path]');
+            inputs.forEach(input => {
+                const path = input.dataset.path;
+                let value;
+                if (input.type === 'checkbox') { value = input.checked; }
+                else if (input.type === 'number') { value = Number(input.value) || 0; }
+                else { value = input.value; }
+                
+                // No se necesita lógica de path complejo para este JSON
+                updatedData[path] = value;
+            });
+            
+            const blob = new Blob([JSON.stringify(updatedData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'bankSettings_modificado.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // --- INICIALIZACIÓN ---
+        renderForm();
+        setupThemeSwitcher();
+        document.getElementById('exportBtn').addEventListener('click', exportJson);
+    });
+    </script>
+</body>
+</html>
